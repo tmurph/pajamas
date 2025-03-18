@@ -72,7 +72,8 @@ struct.")
 
 ;;; Internal Variables:
 
-
+(defvar pajamas--saved-bindings nil
+  "Keybindings saved by `pajamas--bind-key-saving'.")
 
 ;;; Commands:
 
@@ -116,6 +117,12 @@ struct.")
       (run-hook-with-args-until-success 'pajamas-find-functions dir)
     (permission-denied nil)))
 
+(defun pajamas--bind-key-saving (key binding)
+  "Save the current binding for KEY in `project-prefix-map' then bind BINDING."
+  (let ((prev-binding (keymap-lookup project-prefix-map key nil t)))
+    (push (list key prev-binding) pajamas--saved-bindings)
+    (keymap-set project-prefix-map key binding)))
+
 ;;; Public Functions:
 
 ;;;###autoload
@@ -142,6 +149,19 @@ pajamas instance object."
 (cl-defmethod pajamas-test-method ((project (head Eldev)))
   (let ((default-directory (cdr project)))
     (compile "eldev test")))
+
+;;; Mode
+
+(define-minor-mode pajamas-mode
+  "Insert `pajamas-build' and `pajamas-test' into the `project-prefix-map'."
+  :global t
+  (cond
+   (pajamas-mode
+    (pajamas--bind-key-saving "c" 'pajamas-build)
+    (pajamas--bind-key-saving "t" 'pajamas-test))
+   (t
+    (while pajamas--saved-bindings
+      (apply 'keymap-set project-prefix-map (pop pajamas--saved-bindings))))))
 
 (provide 'pajamas)
 ;;; pajamas.el ends here

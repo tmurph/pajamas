@@ -43,5 +43,18 @@
       (pajamas-test)
       (expect 'compile :to-have-been-called-with "eldev test"))))
 
+(describe "`pajamas-mode'"
+  (after-each
+    (pajamas-mode -1))
+  (it "shadows bindings in `project-prefix-map'"
+    (pajamas-mode 1)
+    (expect (keymap-lookup project-prefix-map "t") :to-be 'pajamas-test))
+  (it "restores `project-prefix-map' bindings when disabled"
+    (let ((prev-binding (keymap-lookup project-prefix-map "t")))
+      (expect prev-binding :not :to-be 'pajamas-test)
+      (pajamas-mode 1)
+      (pajamas-mode -1)
+      (expect (keymap-lookup project-prefix-map "t") :to-be prev-binding))))
+
 (provide 'pajamas-test)
 ;;; pajamas-test.el ends here
