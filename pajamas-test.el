@@ -34,5 +34,14 @@
                    car)
               :to-be 'Eldev))))
 
+(describe "`pajamas-test'"
+  (it "runs `eldev test` in an Eldev project"
+    (spy-on 'compile)
+    (assess-with-filesystem '("Eldev"
+                              "code.el"
+                              "code-test.el")
+      (pajamas-test)
+      (expect 'compile :to-have-been-called-with "eldev test"))))
+
 (provide 'pajamas-test)
 ;;; pajamas-test.el ends here

@@ -26,15 +26,15 @@
 ;; test commands on a project-by-project basis.
 ;;
 ;; The goal is to have one key that just "does the right thing" based on
-;; `project-current'.
+;; the return value from `pajamas-current'.
 ;;
 ;; Commands:
 ;;
-;; `pajamas-build' will default to Emacs' `compile' but can be
-;; customized to any other command
+;; `pajamas-build' defaults to Emacs' `compile' but can be customized to
+;; any other command by specializing `pajamas-build-method'.
 ;;
 ;; `pajamas-test' defaults to "make test" but can be customized to any
-;; other command
+;; other command by specializing `pajamas-test-method'.
 
 ;;; TODO:
 
@@ -76,12 +76,17 @@ struct.")
 
 ;;; Commands:
 
-(cl-defgeneric pajamas-build (project)
-  "Call an appropriate build command for PROJECT."
-  (compile))
+;;;###autoload
+(defun pajamas-build ()
+  "Call an appropriate build command in the current project."
+  (interactive)
+  (pajamas-build-method (pajamas-current)))
 
-(cl-defgeneric pajamas-test (project)
-  "Call an appropriate test command for PROJECT.")
+;;;###autoload
+(defun pajamas-test ()
+  "Call an appropriate test command in the current project."
+  (interactive)
+  (pajamas-test-method (pajamas-current)))
 
 ;;; Internal Functions:
 
@@ -120,6 +125,23 @@ struct.")
 See the doc string of `pajamas-find-functions' for the general form of the
 pajamas instance object."
   (pajamas--find-in-directory (or directory default-directory)))
+
+;;;; Build methods
+
+(cl-defgeneric pajamas-build-method (project)
+  "Call an appropriate build command for PROJECT."
+  (call-interactively 'compile))
+
+;;;; Test methods
+
+(cl-defgeneric pajamas-test-method (project)
+  "Call an appropriate test command for PROJECT."
+  (let ((compile-command "make test "))
+    (call-interactively 'compile)))
+
+(cl-defmethod pajamas-test-method ((project (head Eldev)))
+  (let ((default-directory (cdr project)))
+    (compile "eldev test")))
 
 (provide 'pajamas)
 ;;; pajamas.el ends here
