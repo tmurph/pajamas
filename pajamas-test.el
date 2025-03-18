@@ -31,8 +31,18 @@
       (expect (->> "code-test.el"
                    (file-name-concat default-directory)
                    (pajamas-current)
-                   car)
-              :to-be 'Eldev))))
+                   car-safe)
+              :to-be 'Eldev)))
+  (it "prefers the `pajamas-current' variable"
+    (assess-with-filesystem '("Eldev"
+                              "code.el"
+                              "code-test.el")
+      (let ((pajamas-current 'make-ert))
+        (expect (->> "code-test.el"
+                     (file-name-concat default-directory)
+                     (pajamas-current)
+                     car-safe)
+                :not :to-be 'Eldev)))))
 
 (describe "`pajamas-test'"
   (it "runs `eldev test` in an Eldev project"

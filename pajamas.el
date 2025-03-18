@@ -70,6 +70,10 @@ struct.")
     ("Eldev" . Eldev))
   "Assoc list assigning marker files to common backend symbols.")
 
+(defvar-local pajamas-current nil
+  "Overriding value to return from `pajamas-current'.")
+(put 'pajamas-current 'safe-local-variable 'symbolp)
+
 ;;; Internal Variables:
 
 (defvar pajamas--saved-bindings nil
@@ -131,7 +135,8 @@ struct.")
 
 See the doc string of `pajamas-find-functions' for the general form of the
 pajamas instance object."
-  (pajamas--find-in-directory (or directory default-directory)))
+  (or pajamas-current
+      (pajamas--find-in-directory (or directory default-directory))))
 
 ;;;; Build methods
 
