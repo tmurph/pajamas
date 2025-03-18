@@ -1,8 +1,8 @@
-;;; pajamas.el --- Wrap your dev commands in a warm blanket  -*- lexical-binding: t; -*-
+;;; pajamas.el --- Wrap your dev commands in a warm blanket. -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2025
 ;; Version: 0.0.1
-;; Package-Requires: ((project dash))
+;; Package-Requires: (project dash)
 
 ;; Author:  <trevor.m.murphy@gmail.com>
 ;; Keywords: convenience, tools, lisp
@@ -36,9 +36,16 @@
 ;; `pajamas-test' defaults to "make test" but can be customized to any
 ;; other command
 
+;;; TODO:
+
+;; * Remove the "dependency" on dash library.  It's not actually
+;;   necessary, I just really hate how ugly one function looks without
+;;   it.
+
 ;;; Code:
 
 (require 'cl-generic)
+(require 'dash)
 
 (defgroup pajamas nil
   "Build commands on the current project."
@@ -69,6 +76,12 @@ struct.")
 
 ;;; Commands:
 
+(cl-defgeneric pajamas-build (project)
+  "Call an appropriate build command for PROJECT."
+  (compile))
+
+(cl-defgeneric pajamas-test (project)
+  "Call an appropriate test command for PROJECT.")
 
 ;;; Internal Functions:
 
@@ -92,14 +105,21 @@ struct.")
          (backend (cdr (assoc match pajamas-common-backend-markers-alist))))
     (when backend (cons backend root))))
 
+(defun pajamas--find-in-directory (dir)
+  "Run irregular hook `pajamas-find-functions' starting at DIR."
+  (condition-case nil
+      (run-hook-with-args-until-success 'pajamas-find-functions dir)
+    (permission-denied nil)))
+
 ;;; Public Functions:
 
-(cl-defgeneric pajamas-build (project)
-  "Call an appropriate build command for PROJECT."
-  (compile))
+;;;###autoload
+(defun pajamas-current (&optional directory)
+  "Return the pajamas instance in DIRECTORY, defaulting to `default-directory'.
 
-(cl-defgeneric pajamas-test (project)
-  "Call an appropriate test command for PROJECT.")
+See the doc string of `pajamas-find-functions' for the general form of the
+pajamas instance object."
+  (pajamas--find-in-directory (or directory default-directory)))
 
 (provide 'pajamas)
 ;;; pajamas.el ends here
