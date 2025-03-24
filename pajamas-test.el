@@ -52,13 +52,37 @@
                 :to-be 'Make)))))
 
 (describe "`pajamas-build'"
+  :var (make-directory)
+
+  (defun set-make-directory (_command &optional _comint)
+    (interactive
+     (list
+      (let ((command (eval compile-command)))
+        (if (or compilation-read-command current-prefix-arg)
+	    (compilation-read-command command)
+	  command))
+      (consp current-prefix-arg)))
+    (setq make-directory default-directory))
+
+  (before-each
+    (spy-on 'compile :and-call-fake 'set-make-directory))
+
   (it "runs `make` in a Make project"
-    (spy-on 'compile)
     (assess-with-filesystem '("Makefile")
       (with-simulated-input "RET"
         (pajamas-build))
       (expect (car-safe (spy-calls-args-for 'compile 0))
-              :to-match "\\`make "))))
+              :to-match "\\`make ")))
+
+  (it "runs `make` from the toplevel of a recursive Make project"
+    (assess-with-filesystem '("Makefile"
+                              "subdir/Makefile")
+      (spy-on 'project-current :and-return-value
+              (cons 'transient default-directory))
+      (assess-with-find-file "subdir/Makefile"
+        (with-simulated-input "RET"
+          (pajamas-build))
+        (expect make-directory :not :to-be default-directory)))))
 
 (describe "`pajamas-test'"
   (it "runs `eldev test` in an Eldev project"

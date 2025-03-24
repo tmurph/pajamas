@@ -41,11 +41,18 @@
 ;; * Remove the "dependency" on dash library.  It's not actually
 ;;   necessary, I just really hate how ugly one function looks without
 ;;   it.
+;; * Better support recursive Make projects.  Do we need to do better
+;;   checking?  Maybe it should be a separate kind of backend?  Or maybe
+;;   we should just rely on the user to handle it.  And if the latter,
+;;   how do we recognize that?  Prefix arg?  User's problem?
+;; * Support prefix arg.  Easy enough to add it to the interactive spec
+;;   and pass along to the generic methods, but what should it do?
 
 ;;; Code:
 
 (require 'cl-generic)
 (require 'dash)
+(require 'project)
 
 (defgroup pajamas nil
   "Build commands on the current project."
@@ -149,6 +156,17 @@ pajamas instance object."
   "Call an appropriate build command for PAJAMA."
   (call-interactively 'compile))
 
+(cl-defmethod pajamas-build-method :extra "recursive-make"
+  :around ((pajama (head Make)))
+  (let* ((project (project-current))
+         (toplevel-make-p (and project
+                               (directory-files (project-root project)
+                                                nil "Makefile" t)))
+         (default-directory (if toplevel-make-p
+                                (project-root project)
+                              default-directory)))
+    (cl-call-next-method)))
+
 ;;;; Test methods
 
 (cl-defgeneric pajamas-test-method (pajama)
@@ -162,6 +180,17 @@ pajamas instance object."
 (cl-defmethod pajamas-test-method ((pajama (head Make)))
   (let ((compile-command "make test "))
     (call-interactively 'compile)))
+
+(cl-defmethod pajamas-test-method :extra "recursive-make"
+  :around ((pajama (head Make)))
+  (let* ((project (project-current))
+         (toplevel-make-p (and project
+                               (directory-files (project-root project)
+                                                nil "Makefile" t)))
+         (default-directory (if toplevel-make-p
+                                (project-root project)
+                              default-directory)))
+    (cl-call-next-method)))
 
 ;;; Mode
 
