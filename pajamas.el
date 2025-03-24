@@ -54,11 +54,11 @@
 
 ;;; Customization:
 
-(defvar pajamas-find-functions (list #'pajamas--try-fallback)
+(defvar pajamas-find-functions '(pajamas--try-fallback)
   "Special hook to find the build system in the current project.
 
 Each function on this hook is called in turn with one argument, the directory
-in which to look, and should return either nil to mean that it is no
+in which to look, and should return either nil to mean that it is not
 applicable, or a pajamas instance.  The exact form of the pajamas instance is
 up to each respective function; the only practical limitation is to use values
 that `cl-defmethod' can dispatch on, like a cons cell, or a list, or a CL
@@ -127,6 +127,11 @@ struct.")
     (push (list key prev-binding) pajamas--saved-bindings)
     (keymap-set project-prefix-map key binding)))
 
+(defun pajamas--restore-keybindings ()
+  "Undo any bindings in `project-prefix-map' set by `pajamas--bind-key-saving'."
+  (while pajamas--saved-bindings
+    (apply 'keymap-set project-prefix-map (pop pajamas--saved-bindings))))
+
 ;;; Public Functions:
 
 ;;;###autoload
@@ -140,19 +145,18 @@ pajamas instance object."
 
 ;;;; Build methods
 
-(cl-defgeneric pajamas-build-method (project)
-  "Call an appropriate build command for PROJECT."
+(cl-defgeneric pajamas-build-method (pajama)
+  "Call an appropriate build command for PAJAMA."
   (call-interactively 'compile))
 
 ;;;; Test methods
 
-(cl-defgeneric pajamas-test-method (project)
-  "Call an appropriate test command for PROJECT."
-  (let ((compile-command "make test "))
-    (call-interactively 'compile)))
+(cl-defgeneric pajamas-test-method (pajama)
+  "Call an appropriate test command for PAJAMA."
+  (call-interactively 'compile))
 
-(cl-defmethod pajamas-test-method ((project (head Eldev)))
-  (let ((default-directory (cdr project)))
+(cl-defmethod pajamas-test-method ((pajama (head Eldev)))
+  (let ((default-directory (cdr pajama)))
     (compile "eldev test")))
 
 ;;; Mode
@@ -165,8 +169,7 @@ pajamas instance object."
     (pajamas--bind-key-saving "c" 'pajamas-build)
     (pajamas--bind-key-saving "t" 'pajamas-test))
    (t
-    (while pajamas--saved-bindings
-      (apply 'keymap-set project-prefix-map (pop pajamas--saved-bindings))))))
+    (pajamas--restore-keybindings))))
 
 (provide 'pajamas)
 ;;; pajamas.el ends here

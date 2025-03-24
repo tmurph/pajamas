@@ -19,8 +19,8 @@
 
 (require 'pajamas)
 
-(require 'buttercup)
 (require 'assess)
+(require 'buttercup)
 (require 'dash)
 
 (describe "`pajamas-current'"
@@ -28,20 +28,17 @@
     (assess-with-filesystem '("Eldev"
                               "code.el"
                               "code-test.el")
-      (expect (->> "code-test.el"
-                   (file-name-concat default-directory)
-                   (pajamas-current)
-                   car-safe)
-              :to-be 'Eldev)))
+      (assess-with-find-file "code-test.el"
+        (expect (car-safe (pajamas-current))
+                :to-be 'Eldev))))
   (it "prefers the `pajamas-current' variable"
     (assess-with-filesystem '("Eldev"
                               "code.el"
-                              "code-test.el")
-      (let ((pajamas-current 'make-ert))
-        (expect (->> "code-test.el"
-                     (file-name-concat default-directory)
-                     (pajamas-current)
-                     car-safe)
+                              "code-test.el"
+                              (".dir-locals.el"
+                               "((nil (pajamas-current . foo)))"))
+      (assess-with-find-file "code-test.el"
+        (expect (car-safe (pajamas-current))
                 :not :to-be 'Eldev)))))
 
 (describe "`pajamas-test'"
