@@ -159,6 +159,10 @@ pajamas instance object."
   (let ((default-directory (cdr pajama)))
     (compile "eldev test")))
 
+(cl-defmethod pajamas-test-method ((pajama (head Make)))
+  (let ((compile-command "make test "))
+    (call-interactively 'compile)))
+
 ;;; Mode
 
 (define-minor-mode pajamas-mode

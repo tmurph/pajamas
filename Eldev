@@ -6,5 +6,5 @@
 ;;(eldev-use-package-archive 'nongnu-elpa)
 (eldev-use-package-archive 'melpa)
 
-(let ((test-dependencies '(assess dash)))
+(let ((test-dependencies '(assess dash with-simulated-input)))
   (apply 'eldev-add-extra-dependencies 'test test-dependencies))

@@ -22,6 +22,7 @@
 (require 'assess)
 (require 'buttercup)
 (require 'dash)
+(require 'with-simulated-input)
 
 (describe "`pajamas-current'"
   (it "finds an Eldev project"
@@ -39,7 +40,25 @@
                                "((nil (pajamas-current . foo)))"))
       (assess-with-find-file "code-test.el"
         (expect (car-safe (pajamas-current))
-                :not :to-be 'Eldev)))))
+                :not :to-be 'Eldev))))
+  (it "finds a Make project"
+    (assess-with-filesystem '("Makefile"
+                              "lisp/ob-awk.el"
+                              "testing/lisp/test-ob-awk.el"
+                              "testing/examples/ob-awk-test.in"
+                              "testing/examples/ob-awk-test.org")
+      (assess-with-find-file "testing/lisp/test-ob-awk.el"
+        (expect (car-safe (pajamas-current))
+                :to-be 'Make)))))
+
+(describe "`pajamas-build'"
+  (it "runs `make` in a Make project"
+    (spy-on 'compile)
+    (assess-with-filesystem '("Makefile")
+      (with-simulated-input "RET"
+        (pajamas-build))
+      (expect (car-safe (spy-calls-args-for 'compile 0))
+              :to-match "\\`make "))))
 
 (describe "`pajamas-test'"
   (it "runs `eldev test` in an Eldev project"
@@ -48,7 +67,14 @@
                               "code.el"
                               "code-test.el")
       (pajamas-test)
-      (expect 'compile :to-have-been-called-with "eldev test"))))
+      (expect 'compile :to-have-been-called-with "eldev test")))
+  (it "runs `make test` in a Make project"
+    (spy-on 'compile)
+    (assess-with-filesystem '("Makefile")
+      (with-simulated-input "RET"
+        (pajamas-test))
+      (expect (car-safe (spy-calls-args-for 'compile 0))
+              :to-match "\\`make test "))))
 
 (describe "`pajamas-mode'"
   (after-each
