@@ -158,6 +158,10 @@ pajamas instance object."
   "Call an appropriate build command for PAJAMA."
   (call-interactively 'compile))
 
+(cl-defmethod pajamas-build-method ((pajama (head Eldev)))
+  (let ((default-directory (cdr pajama)))
+    (compile "eldev package")))
+
 (cl-defmethod pajamas-build-method ((_pajama (head Make)))
   (setq compile-command '(or (car-safe compile-history)
                              "make -k "))

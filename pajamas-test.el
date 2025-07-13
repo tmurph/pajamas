@@ -62,6 +62,14 @@
   (before-each
     (spy-on 'compile))
 
+  (it "runs `eldev package` in an Eldev project"
+    (assess-with-filesystem '("Eldev"
+                              "code.el"
+                              "code-test.el")
+      (let (compile-history)
+        (pajamas-build))
+      (expect 'compile :to-have-been-called-with "eldev package")))
+
   (it "runs `make` in a Make project"
     (assess-with-filesystem '("Makefile")
       (let (compile-history)
