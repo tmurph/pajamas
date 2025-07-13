@@ -1,7 +1,7 @@
 ;;; pajamas.el --- Wrap your dev commands in a warm blanket. -*- lexical-binding: t; -*-
 
 ;; Copyright (C) 2025
-;; Version: 0.0.4
+;; Version: 0.0.5
 ;; Package-Requires: (project)
 
 ;; Author:  <trevor.m.murphy@gmail.com>
