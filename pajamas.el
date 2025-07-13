@@ -2,7 +2,7 @@
 
 ;; Copyright (C) 2025
 ;; Version: 0.0.4
-;; Package-Requires: (project dash)
+;; Package-Requires: (project)
 
 ;; Author:  <trevor.m.murphy@gmail.com>
 ;; Keywords: convenience, tools, lisp
@@ -38,9 +38,6 @@
 
 ;;; TODO:
 
-;; * Remove the "dependency" on dash library.  It's not actually
-;;   necessary, I just really hate how ugly one function looks without
-;;   it.
 ;; * Better support recursive Make projects.  Do we need to do better
 ;;   checking?  Maybe it should be a separate kind of backend?  Or maybe
 ;;   we should just rely on the user to handle it.  And if the latter,
@@ -51,7 +48,6 @@
 ;;; Code:
 
 (require 'cl-generic)
-(require 'dash)
 (require 'project)
 
 (defgroup pajamas nil
@@ -100,13 +96,19 @@ struct.")
   (interactive)
   (pajamas-test-method (pajamas-current)))
 
+;;;###autoload
+(defun pajamas-find-test-file ()
+  "Jump between source and test file."
+  (interactive)
+  (pajamas-find-test-file-method (pajamas-current)))
+
 ;;; Internal Functions:
 
 (defun pajamas--try-fallback (dir)
   "Try searching above DIR for files indicating a common build system."
-  (let* ((backend-markers (->> pajamas-common-backend-markers-alist
-                               (mapcar 'car-safe)
-                               (delete nil)))
+  (let* ((backend-markers (thread-last pajamas-common-backend-markers-alist
+                                       (mapcar 'car-safe)
+                                       (delete nil)))
          (marker-re (rx-to-string
                      `(seq string-start (or ,@backend-markers)
                            string-end)))
@@ -152,12 +154,17 @@ pajamas instance object."
 
 ;;;; Build methods
 
-(cl-defgeneric pajamas-build-method (pajama)
+(cl-defgeneric pajamas-build-method (_pajama)
   "Call an appropriate build command for PAJAMA."
   (call-interactively 'compile))
 
+(cl-defmethod pajamas-build-method ((_pajama (head Make)))
+  (setq compile-command '(or (car-safe compile-history)
+                             "make -k "))
+  (call-interactively 'compile))
+
 (cl-defmethod pajamas-build-method :extra "recursive-make"
-  :around ((pajama (head Make)))
+  :around ((_pajama (head Make)))
   (let* ((project (project-current))
          (toplevel-make-p (and project
                                (directory-files (project-root project)
@@ -169,7 +176,7 @@ pajamas instance object."
 
 ;;;; Test methods
 
-(cl-defgeneric pajamas-test-method (pajama)
+(cl-defgeneric pajamas-test-method (_pajama)
   "Call an appropriate test command for PAJAMA."
   (call-interactively 'compile))
 
@@ -177,12 +184,13 @@ pajamas instance object."
   (let ((default-directory (cdr pajama)))
     (compile "eldev test")))
 
-(cl-defmethod pajamas-test-method ((pajama (head Make)))
-  (let ((compile-command "make test "))
-    (call-interactively 'compile)))
+(cl-defmethod pajamas-test-method ((_pajama (head Make)))
+  (setq compile-command '(or (car-safe compile-history)
+                             "make test "))
+  (call-interactively 'compile))
 
 (cl-defmethod pajamas-test-method :extra "recursive-make"
-  :around ((pajama (head Make)))
+  :around ((_pajama (head Make)))
   (let* ((project (project-current))
          (toplevel-make-p (and project
                                (directory-files (project-root project)
@@ -192,6 +200,44 @@ pajamas instance object."
                               default-directory)))
     (cl-call-next-method)))
 
+;;;; Find Test File methods
+
+(cl-defgeneric pajamas-find-test-file-method (_pajama)
+  "Call an appropriate jump command for PAJAMA.")
+
+(cl-defmethod pajamas-find-test-file-method (_pajama
+                                             &context
+                                             (major-mode python-base-mode))
+  (if-let* ((bufname (buffer-name))
+            (target (concat (if (string-match-p "\\`test_" bufname)
+                                (substring bufname 5)
+                              (concat "test_" bufname))
+                            "\\'"))
+            (all-files (project-files (project-current)))
+            (match (cl-find-if (apply-partially #'string-match-p target)
+                               all-files)))
+      (find-file match)
+    (message "%s" "No test file found")))
+
+(cl-defmethod pajamas-find-test-file-method (_pajama
+                                             &context
+                                             (major-mode emacs-lisp-mode))
+  (if-let* ((bufname (buffer-name))
+            ((string-match (rx (group (one-or-more (or alnum "-_/.")))
+                               (optional (group "-test"))
+                               (group ".el")
+                               eos)
+                           bufname))
+            (target (concat (match-string 1 bufname)
+                            (unless (match-string 2 bufname) "-test")
+                            (match-string 3 bufname)
+                            "\\'"))
+            (all-files (project-files (project-current)))
+            (match (cl-find-if (apply-partially #'string-match-p target)
+                               all-files)))
+      (find-file match)
+    (message "%s" "No test file found")))
+
 ;;; Mode
 
 (define-minor-mode pajamas-mode
@@ -200,10 +246,10 @@ pajamas instance object."
   (cond
    (pajamas-mode
     (pajamas--bind-key-saving "c" 'pajamas-build)
-    (pajamas--bind-key-saving "t" 'pajamas-test))
+    (pajamas--bind-key-saving "t" 'pajamas-test)
+    (pajamas--bind-key-saving "a" 'pajamas-find-test-file))
    (t
     (pajamas--restore-keybindings))))
 
 (provide 'pajamas)
 ;;; pajamas.el ends here
-
