@@ -219,10 +219,10 @@ pajamas instance object."
 (cl-defmethod pajamas-find-test-file-method (_pajama
                                              &context
                                              (major-mode python-base-mode))
-  (if-let* ((bufname (buffer-name))
-            (target (concat (if (string-match-p "\\`test_" bufname)
-                                (substring bufname 5)
-                              (concat "test_" bufname))
+  (if-let* ((filename (file-name-nondirectory (buffer-file-name)))
+            (target (concat (if (string-match-p "\\`test_" filename)
+                                (substring filename 5)
+                              (concat "test_" filename))
                             "\\'"))
             (all-files (project-files (project-current)))
             (match (cl-find-if (apply-partially #'string-match-p target)
@@ -230,18 +230,22 @@ pajamas instance object."
       (find-file match)
     (message "%s" "No test file found")))
 
+(defconst pajamas--emacs-lisp-mode-test-file-re
+  (rx (group (one-or-more (or alnum "-_/.")))
+      (optional (group "-test"))
+      (group ".el")
+      eos)
+  "Regexp that matches elisp test / implementation file pairs.")
+
 (cl-defmethod pajamas-find-test-file-method (_pajama
                                              &context
                                              (major-mode emacs-lisp-mode))
-  (if-let* ((bufname (buffer-name))
-            ((string-match (rx (group (one-or-more (or alnum "-_/.")))
-                               (optional (group "-test"))
-                               (group ".el")
-                               eos)
-                           bufname))
-            (target (concat (match-string 1 bufname)
-                            (unless (match-string 2 bufname) "-test")
-                            (match-string 3 bufname)
+  (if-let* ((filename (file-name-nondirectory (buffer-file-name)))
+            ((string-match pajamas--emacs-lisp-mode-test-file-re
+                           filename))
+            (target (concat (match-string 1 filename)
+                            (unless (match-string 2 filename) "-test")
+                            (match-string 3 filename)
                             "\\'"))
             (all-files (project-files (project-current)))
             (match (cl-find-if (apply-partially #'string-match-p target)

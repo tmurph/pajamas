@@ -125,12 +125,21 @@
               :to-match "\\`make test "))))
 
 
+;;; hey just fyi, you got tripped up for a while writing a new test here
+;;; because you forgot to set the fake `project-root' variable.  I'm
+;;; pretty sure you introduced that variable because it's easier than
+;;; trying to get a real VC to recognize the temp directory structure.
 (describe "`pajamas-find-test-file'"
   :var (project-root)
 
   (before-each
     (spy-on 'project-current :and-call-fake
             (lambda (&rest args) (cons 'transient project-root))))
+
+  (defun setup-fake-project-root (&optional subdir)
+    (setq project-root (if subdir
+                           (expand-file-name subdir default-directory)
+                         default-directory)))
 
   (it "jumps between Python source and test files"
     (let ((python-indent-guess-indent-offset-verbose nil))
@@ -139,7 +148,7 @@
                                 "src/mymodule/__init__.py"
                                 "src/mymodule/one.py"
                                 "tests/test_one.py")
-        (setq project-root default-directory)
+        (setup-fake-project-root)
         (assess-with-find-file "src/mymodule/one.py"
           (pajamas-find-test-file)
           (expect (buffer-file-name) :to-match "tests/test_one.py\\'"))
@@ -151,13 +160,24 @@
     (assess-with-filesystem '("Eldev"
                               "code.el"
                               "code-test.el")
-      (setq project-root default-directory)
+      (setup-fake-project-root)
       (assess-with-find-file "code.el"
         (pajamas-find-test-file)
         (expect (buffer-file-name) :to-match "code-test.el\\'"))
       (assess-with-find-file "code-test.el"
         (pajamas-find-test-file)
-        (expect (buffer-file-name) :to-match "code.el\\'")))))
+        (expect (buffer-file-name) :to-match "code.el\\'"))))
+
+  (it "can handle multiple files with the same name"
+    (assess-with-filesystem '("installed/code.el"
+                              "devel/Eldev"
+                              "devel/code.el"
+                              "devel/code-test.el")
+      (setup-fake-project-root "devel/")
+      (assess-with-find-file "installed/code.el"
+        (assess-with-find-file "devel/code.el"
+          (pajamas-find-test-file)
+          (expect (buffer-file-name) :to-match "code-test.el\\'"))))))
 
 
 (describe "`pajamas-mode'"
