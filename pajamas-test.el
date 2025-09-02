@@ -51,6 +51,13 @@
                               "testing/examples/ob-awk-test.in"
                               "testing/examples/ob-awk-test.org")
       (assess-with-find-file "testing/lisp/test-ob-awk.el"
+        (expect (car-safe (pajamas-current)) :to-be 'Make))))
+
+  (it "prefers Make over Eldev"
+    (assess-with-filesystem '("Makefile"
+                              "Eldev"
+                              "code.el")
+      (assess-with-find-file "code.el"
         (expect (car-safe (pajamas-current)) :to-be 'Make)))))
 
 

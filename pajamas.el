@@ -67,11 +67,16 @@ up to each respective function; the only practical limitation is to use values
 that `cl-defmethod' can dispatch on, like a cons cell, or a list, or a CL
 struct.")
 
-(defvar pajamas-common-backend-markers-alist
+(defcustom pajamas-common-backend-markers-alist
   '(("Makefile" . Make)
     ("GNUMakefile" . Make)
     ("Eldev" . Eldev))
-  "Assoc list assigning marker files to common backend symbols.")
+  "Assoc list assigning marker files to common backend symbols.
+
+In projects with multiple backend markers, entries earlier in this list will
+be given priority."
+  :type '(alist :key-type (string :tag "Filename")
+                :value-type (symbol :tag "Backend")))
 
 (defvar-local pajamas-current nil
   "Overriding value to return from `pajamas-current'.")
@@ -109,19 +114,21 @@ struct.")
   (let* ((backend-markers (thread-last pajamas-common-backend-markers-alist
                                        (mapcar 'car-safe)
                                        (delete nil)))
-         (marker-re (rx-to-string
-                     `(seq string-start (or ,@backend-markers)
-                           string-end)))
-         match
+         (marker-re (rx-to-string `(seq string-start
+                                        (or ,@backend-markers)
+                                        string-end)))
+         matches
          (root
           (locate-dominating-file
            dir
            (lambda (d)
-             (setq match
+             (setq matches
                    (condition-case nil
-                       (car (directory-files d nil marker-re t 1))
+                       (directory-files d nil marker-re t)
                      (file-missing nil))))))
-         (backend (cdr (assoc match pajamas-common-backend-markers-alist))))
+         (backend (cdr (assoc (regexp-opt matches)
+                              pajamas-common-backend-markers-alist
+                              'string-match-p))))
     (when backend (cons backend root))))
 
 (defun pajamas--find-in-directory (dir)
